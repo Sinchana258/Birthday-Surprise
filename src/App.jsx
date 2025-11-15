@@ -1,70 +1,35 @@
 // src/App.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  PartyPopper,
-  Share2,
-  Printer,
-  Heart,
-  Image as ImageIcon,
-  Music,
-  MapPin,
-  Trash2,
-  Info,
-} from "lucide-react";
+import { PartyPopper, Share2, Printer, Heart, Image as ImageIcon, Music, Info } from "lucide-react";
+import "./custom.css"; // your petal CSS (must include .petal and @keyframes petalFall)
 
-/**
- * Clean, self-contained Birthday Pass site
- * - Big redeem cards with images + descriptions
- * - Petal background effect
- * - Flipbook link placeholder (no uploads)
- * - Spotify playlist embed
- * - LocalStorage persistence
- */
+// Local images (put these exact files in src/assets/)
+import argImg from "./assets/argument.jpg";
+import foodImg from "./assets/biryani.jpeg";
+import movieImg from "./assets/movie.jpg";
+import choreImg from "./assets/chore.jpg";
+import visitImg from "./assets/visit.jpeg";
 
-const FRIEND_NAME = "Ranjitha (Ranjj)";
-const THEME = { accent: "from-fuchsia-500 via-pink-500 to-rose-500", emoji: "💚" };
+/* ----------------- Config ----------------- */
+const FRIEND_NAME = "Ranjj";
+const THEME = { accent: "from-fuchsia-500 via-pink-500 to-rose-500", emoji: "🩵" };
+// !! PASTE YOUR FRIEND'S SPOTIFY PLAYLIST ID HERE !!
+const SPOTIFY_PLAYLIST_ID = "37i9dQZF1E8OaG4d0v8N9f";
+const DEFAULT_FLIPBOOK_URL = "https://heyzine.com/flip-book/d80cbd2e37.html"; // Default used on first load/if link is cleared
+
 
 const PASSES = [
-  {
-    id: "argument-immunity",
-    title: "Argument Immunity Pass",
-    description: "You automatically win the argument. I must agree — no debates.",
-    image:
-      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3&s=9b872d0f6f3f5b0b2c8c3a5f0f6c6b3d",
-  },
-  {
-    id: "food-treat",
-    title: "Food Treat Pass",
-    description: "Take me to my fav food or order it instantly — fries and savoury first.",
-    image:
-      "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3&s=3f9f8b6c2c9b6a4d6e8b3c2a1f2d3a4b",
-  },
-  {
-    id: "movie-night",
-    title: "Movie Night Pass",
-    description: "One stupid/fun movie night (or we pretend to). You pick the place.",
-    image:
-      "https://images.unsplash.com/photo-1517604931442-7fbc9a9f5d2b?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3&s=0c2b7b7d8f2d7a8c6b1f4e9a6c9b8d7f",
-  },
-  {
-    id: "chore-pass",
-    title: "Make Me Do Your Chore Pass",
-    description: "I’ll do one chore you pick. Loudly complain while I do it.",
-    image:
-      "https://images.unsplash.com/photo-1484981184820-2e84ea0e2b6f?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3&s=1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d",
-  },
-  {
-    id: "visit-home",
-    title: "I Will Visit Your Home Pass",
-    description: "I will come to your home — for my peace and your happiness. Bring snacks.",
-    image:
-      "https://images.unsplash.com/photo-1505691723518-36a6b845f0b6?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.0.3&s=2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e",
-  },
+  { id: "argument-immunity", title: "Argument Immunity ", description: "You automatically win the argument. I must agree — no debates. even if you are wrong", image: argImg },
+  { id: "food-treat", title: "Food Treat ", description: "I will take you to your fav Restaurant or order for you whatever you want instantly.", image: foodImg },
+  { id: "movie-night", title: "Movie Night ", description: "I will take you to one  movie. You will pick the movie and the place.", image: movieImg },
+  { id: "chore-pass", title: "Make Me Do Your Chore ", description: "I’ll do any one of your task or work . Loudly complain while I do it.", image: choreImg },
+  { id: "visit-home", title: "Home Visit", description: "I will come to your home Again. Actually this is my pass😉 ", image: visitImg },
 ];
 
-const STORAGE_KEY = "birthday-pass:v1";
+const STORAGE_KEY = "birthday-pass-website:v1";
 const FLIP_LINK_KEY = "birthday-pass-fliplink:v1";
 
+/* ----------------- Helpers ----------------- */
 function useLocalState(key, initial) {
   const [value, setValue] = useState(() => {
     try {
@@ -82,28 +47,43 @@ function useLocalState(key, initial) {
   return [value, setValue];
 }
 
-function PetalField() {
-  // simple animated petals (CSS-only) — decorative background
+/* Background gradient layer (separate so petals are visible) */
+function BackgroundGradient() {
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <style>{`
-        .petal { position: absolute; top: -10%; width: 18px; height: 18px; border-radius: 60% 40% 50% 50%; opacity: 0.9; }
-        @keyframes fall { 0% { transform: translateY(-10vh) rotate(0deg) scale(0.6); opacity: 1 } 100% { transform: translateY(120vh) rotate(360deg) scale(1); opacity: 0.25 } }
-      `}</style>
-      {Array.from({ length: 16 }).map((_, i) => {
-        const left = Math.round(Math.random() * 100);
-        const delay = (i % 6) * 0.6;
-        const dur = 8 + Math.random() * 8;
-        const hue = 320 + Math.floor(Math.random() * 30);
+    <div
+      aria-hidden
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 0,
+        pointerEvents: "none",
+        background: "linear-gradient(180deg, rgba(253,242,248,1) 0%, rgba(250,245,255,1) 100%)",
+      }}
+    />
+  );
+}
+
+/* Petals only (no confetti) — uses classes from custom.css */
+function PetalField() {
+  return (
+    <div aria-hidden style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 5, overflow: "hidden" }}>
+      {Array.from({ length: 28 }).map((_, i) => {
+        const left = Math.floor(Math.random() * 100);
+        const delay = (i % 7) * 0.6 + Math.random() * 0.8;
+        const dur = 9 + Math.random() * 8;
+        const hue = 320 + Math.floor(Math.random() * 40);
+        const size = 10 + Math.floor(Math.random() * 18);
         return (
           <div
             key={i}
             className="petal"
             style={{
               left: `${left}vw`,
-              animation: `fall ${dur}s linear ${delay}s infinite`,
-              background: `linear-gradient(135deg, hsla(${hue},70%,88%,0.95), hsla(${hue + 20},70%,72%,0.85))`,
-              transform: `rotate(${Math.random() * 50 - 25}deg)`,
+              width: `${size}px`,
+              height: `${Math.round(size * 1.3)}px`,
+              animation: `petalFall ${dur}s linear ${delay}s infinite`,
+              background: `linear-gradient(135deg, hsla(${hue},80%,88%,0.95), hsla(${hue + 20},70%,72%,0.9))`,
+              transform: `rotate(${Math.random() * 60 - 30}deg)`,
             }}
           />
         );
@@ -112,22 +92,24 @@ function PetalField() {
   );
 }
 
+/* Small UI blocks */
 function Card({ children, className = "" }) {
-  return <div className={`rounded-2xl shadow-2xl p-5 bg-white/95 ${className}`}>{children}</div>;
+  // Enhanced Card with backdrop-blur and a subtle white border for floating feel
+  return (
+    <div className={`relative z-10 rounded-3xl shadow-2xl p-6 bg-white/95 backdrop-blur-sm border border-white/50 ${className}`}>
+      {children}
+    </div>
+  );
 }
 
 function PassCard({ pass, redeemed, onRedeem }) {
   const isRedeemed = Boolean(redeemed?.date);
   return (
-    <Card className={`overflow-hidden border ${isRedeemed ? "opacity-60" : ""}`}>
+    <Card className={`overflow-hidden border ${isRedeemed ? "opacity-70" : ""}`}>
       <div className="flex flex-col md:flex-row gap-4 items-stretch">
-        <div className="w-full md:w-56 h-56 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
-          {pass.image ? (
-            // eslint-disable-next-line jsx-a11y/img-redundant-alt
-            <img src={pass.image} alt={`${pass.title} image`} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl">{pass.title.charAt(0)}</div>
-          )}
+        {/* Improved image height for better mobile responsiveness and grayscale effect on redeemed */}
+        <div className={`w-full md:w-64 h-40 sm:h-64 rounded-xl overflow-hidden flex-shrink-0 transform transition-transform hover:scale-105 ${isRedeemed ? "grayscale" : ""}`}>
+          {pass.image ? <img src={pass.image} alt={`${pass.title} image`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">{pass.title.charAt(0)}</div>}
         </div>
 
         <div className="flex-1 flex flex-col justify-between">
@@ -139,18 +121,18 @@ function PassCard({ pass, redeemed, onRedeem }) {
 
           <div className="mt-4 flex items-center justify-between">
             <span className="text-sm font-semibold px-3 py-1 rounded-full bg-black/5">{isRedeemed ? "Redeemed" : "Available"}</span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
                 disabled={isRedeemed}
                 onClick={() => onRedeem(pass.id)}
-                className={`px-4 py-2 rounded-2xl text-sm font-semibold transition ${isRedeemed ? "bg-gray-200 text-gray-500 cursor-not-allowed" : `bg-gradient-to-r ${THEME.accent} text-white hover:brightness-105`}`}
+                // Added hover/transition effect for Redeem button
+                className={`px-4 py-2 rounded-2xl text-sm font-semibold transition hover:scale-[1.03] ${isRedeemed
+                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  : `bg-gradient-to-r ${THEME.accent} text-white hover:brightness-105`}`}
               >
                 {isRedeemed ? "Used" : "Redeem"}
               </button>
-              <button
-                onClick={() => alert(`${pass.title}\n\n${pass.description}`)}
-                className="px-3 py-2 rounded-md bg-white/90 shadow text-sm flex items-center gap-2"
-              >
+              <button onClick={() => alert(`${pass.title}\n\n${pass.description}`)} className="px-3 py-2 rounded-md bg-white/90 shadow text-sm flex items-center gap-2 hover:bg-gray-100 transition-colors">
                 <Info className="w-4 h-4" /> Details
               </button>
             </div>
@@ -161,187 +143,169 @@ function PassCard({ pass, redeemed, onRedeem }) {
   );
 }
 
-export default function App() {
+/* ----------------- App ----------------- */
+export default function BirthdayPassSite() {
   const [state, setState] = useLocalState(STORAGE_KEY, { redeemed: {} });
-  const [flipLink, setFlipLink] = useLocalState(FLIP_LINK_KEY, "");
+  const [flipLink, setFlipLink] = useLocalState(FLIP_LINK_KEY, DEFAULT_FLIPBOOK_URL);
   const [localFlipInput, setLocalFlipInput] = useState(flipLink || "");
 
   const allRedeemed = useMemo(() => PASSES.every((p) => state.redeemed[p.id]?.date), [state]);
 
   function redeem(id) {
-    const ok = confirm("Redeem this pass now? You can't undo this.");
-    if (!ok) return;
+    const confirmed = confirm("Are you sure you want to redeem this pass now? The power will be used! (You can ask nicely to un-redeem later.)");
+    if (!confirmed) return;
     setState((s) => ({ ...s, redeemed: { ...s.redeemed, [id]: { date: Date.now() } } }));
   }
 
   function resetAll() {
-    const ok = confirm("Reset all passes?");
+    const ok = confirm("Reset all passes to Available?");
     if (!ok) return;
     setState({ redeemed: {} });
   }
 
   function saveFlipLink() {
     const url = localFlipInput.trim();
-    if (!url) return alert("Paste a valid flipbook URL (Heyzine or any host).");
+    if (!url) return alert("Paste a valid flipbook URL (Heyzine or any shareable URL).");
     setFlipLink(url);
-    alert("Flipbook link saved!");
+    alert("Flipbook link saved! Refresh the page to see changes if needed.");
   }
 
   function clearFlipLink() {
     setLocalFlipInput("");
-    setFlipLink("");
+    setFlipLink(DEFAULT_FLIPBOOK_URL);
+    alert("Flipbook link reset to default.");
   }
 
+  // Spotify Embed URL using the defined ID
+  const spotifyEmbedUrl = "https://open.spotify.com/embed/playlist/3tc4TLYRYfvrhiT9J7TBEB?utm_source=generator";
+
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-fuchsia-50 text-gray-900 p-6 overflow-x-hidden">
+    <>
+      <BackgroundGradient />
       <PetalField />
 
-      <header className="max-w-6xl mx-auto text-center py-8">
-        <div className={`inline-flex items-center gap-3 px-5 py-3 rounded-full bg-gradient-to-r ${THEME.accent} text-white shadow-lg`}>
-          <PartyPopper className="w-5 h-5" />
-          <span className="text-sm font-medium">Happy Birthday {FRIEND_NAME}! {THEME.emoji}</span>
-        </div>
+      <div style={{ position: "relative", zIndex: 10 }} className="min-h-screen text-gray-900 p-6 overflow-x-hidden">
 
-        <h1 className="mt-6 text-5xl font-extrabold tracking-tight">Your 5 Redeemable Passes</h1>
-        <p className="mt-3 text-gray-600 max-w-2xl mx-auto">No sweets — just power, memories, and small promises. Use them when you want.</p>
+        {/* ENHANCED HEADER SECTION */}
+        <header className="max-w-6xl mx-auto text-center py-8 relative" style={{ zIndex: 11 }}>
 
-        <div className="mt-6 flex items-center justify-center gap-3">
-          <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert("Link copied"); }} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white shadow">
-            <Share2 className="w-4 h-4" /> Share
-          </button>
-          <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white shadow">
-            <Printer className="w-4 h-4" /> Print
-          </button>
-          <button onClick={resetAll} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white shadow">
-            Reset
-          </button>
-        </div>
-      </header>
+          {/* Celebratory Badge */}
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/70 shadow-md backdrop-blur-sm text-sm font-medium border border-pink-200/50`}>
+            <PartyPopper className="w-4 h-4 text-pink-500" />
+            <span className="text-gray-800">Happy Happy Happy Birthday {FRIEND_NAME}! {THEME.emoji}</span>
+          </div>
 
-      <main className="max-w-6xl mx-auto">
-        <section className="grid md:grid-cols-2 gap-6">
-          {PASSES.map((p) => (
-            <div key={p.id}>
-              <PassCard pass={p} redeemed={state.redeemed[p.id]} onRedeem={redeem} />
-            </div>
-          ))}
-        </section>
+          <h1 className="mt-6 text-6xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-pink-600 via-fuchsia-600 to-rose-500">🫶🏻HAPPIEST BIRTHDAY, RANJJ 🎂🫶🏻 </h1>
+          <p className="mt-3 text-gray-700 max-w-2xl mx-auto text-lg">No sweets — just power, memories, and small promises. Use them when you want.</p>
 
-        {allRedeemed && (
-          <div className="mt-8">
-            <Card>
-              <div className="flex items-start gap-3">
-                <Heart className="w-6 h-6 mt-1" />
-                <div>
-                  <h3 className="font-semibold text-lg">You used ALL the power. Proud of you.</h3>
-                  <p className="text-sm text-gray-600">New season releases soon… if you’re nice to me.</p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            {/* Enhanced Button Styling */}
+            <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert("Link copied"); }} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white shadow-md hover:scale-[1.03] transition-transform">
+              <Share2 className="w-4 h-4" /> Share
+            </button>
+            <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white shadow-md hover:scale-[1.03] transition-transform">
+              <Printer className="w-4 h-4" /> Print
+            </button>
+            {/* Reset button distinguished visually */}
+            <button onClick={resetAll} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white shadow-md text-gray-500 hover:text-red-500 hover:scale-[1.03] transition-transform">
+              Reset Passes
+            </button>
+          </div>
+        </header>
+
+        <main className="max-w-6xl mx-auto" style={{ zIndex: 11 }}>
+
+          {/* Passes Section */}
+          <section className="grid md:grid-cols-2 gap-6">
+            {PASSES.map((p) => (
+              <div key={p.id}>
+                <PassCard pass={p} redeemed={state.redeemed[p.id]} onRedeem={redeem} />
+              </div>
+            ))}
+          </section>
+
+          {/* All Redeemed Message */}
+          {allRedeemed && (
+            <div className="mt-8">
+              <Card>
+                <div className="flex items-start gap-3">
+                  <Heart className="w-6 h-6 mt-1 text-red-500" />
+                  <div>
+                    <h3 className="font-semibold text-lg">You used ALL the power. Proud of you.</h3>
+                    <p className="text-sm text-gray-600">New season releases soon… if you’re nice to me.</p>
+                  </div>
                 </div>
+              </Card>
+            </div>
+          )}
+
+          {/* Flipbook embed (Now using dynamic URL) */}
+          <section className="mt-10">
+            <Card>
+              <div className="flex items-center gap-3 mb-4">
+                <ImageIcon className="w-5 h-5" />
+                <div>
+                  <h2 className="text-xl font-semibold">❤️Tiny Moments, Big Memories❤️</h2>
+                  <p className="text-sm text-gray-600">These pages aren’t perfect pictures. They may look simple, but every picture holds a memory I’m genuinely grateful for.🤗</p>
+                </div>
+              </div>
+
+              <div className="w-full overflow-hidden rounded-xl shadow-lg border bg-white">
+                <iframe
+                  allowFullScreen
+                  allow="clipboard-write"
+                  scrolling="no"
+                  className="fp-iframe"
+                  // Uses the saved link, or falls back to the default
+                  src={flipLink || DEFAULT_FLIPBOOK_URL}
+                  style={{ border: "1px solid lightgray", width: "100%", height: "420px" }}
+                  title="Flipbook of Our Shared Memories"
+                />
+              </div>
+
+              <div className="mt-4 flex gap-2 items-center">
+                <input value={localFlipInput} onChange={(e) => setLocalFlipInput(e.target.value)} placeholder="Paste flipbook URL" className="px-3 py-2 border rounded flex-1" />
+                <button onClick={saveFlipLink} className="px-3 py-2 rounded bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:brightness-105">Save</button>
+                <button onClick={clearFlipLink} className="px-3 py-2 rounded bg-white shadow hover:bg-gray-100">Clear</button>
               </div>
             </Card>
-          </div>
-        )}
+          </section>
 
-        {/* Letter */}
-        <section className="mt-10">
-          <Card>
-            <div className="flex items-center gap-3 mb-3">
-              <Heart className="w-5 h-5" />
-              <h2 className="text-xl font-semibold">A Short Letter</h2>
-            </div>
-            <pre className="whitespace-pre-wrap leading-relaxed text-gray-700 text-sm md:text-base">{`Dear ${FRIEND_NAME},
-
-You do so many small things for me every day — holding my things, waiting for me in class, reserving my seat, bringing lunch or snacks, helping with project work, listening to my rants, and gossiping with me until you finally say “Classic Namgyake.”
-
-You share things with me that you don’t share with others. You walk, talk, and eat everything on the way, and somehow make it all funny. The way you love your family — I really respect that.
-
-I still remember the day I was stressed with a project and told you to tell me later. You cried — and I hated that I made you cry. But it also made me realize how much I matter to you, and that means a lot.
-
-Whenever your friends tease you by calling me your only best friend, and you just agree without pretending — I love that you accept the truth so confidently.
-
-We’ve been together for 3 years and we’re still going strong. Sorry for getting you in trouble when I laugh in class. And thanks for making those boring lectures bearable.
-
-So... happy birthday, Ranjj 😉
-
-— your permanent clown & bodyguard`}</pre>
-          </Card>
-        </section>
-
-        {/* Flipbook link placeholder */}
-        <section className="mt-10">
-          <Card>
-            <div className="flex items-center gap-3 mb-4">
-              <ImageIcon className="w-5 h-5" />
-              <div>
-                <h2 className="text-xl font-semibold">Tiny Moments, Big Memories</h2>
-                <p className="text-sm text-gray-600">A small flipbook of the moments we’ve shared — funny ones, random ones, and the ones that became special.</p>
+          {/* Spotify (Now conditionally rendered) */}
+          <section className="mt-10">
+            <Card>
+              <div className="flex items-center gap-3 mb-4">
+                <Music className="w-5 h-5" />
+                <h2 className="text-xl font-semibold">A Playlist Just For You ( Songs I thought you might like )</h2>
               </div>
-            </div>
 
-            <div className="mt-4 grid md:grid-cols-3 gap-4 items-start">
-              <div className="md:col-span-2">
-                <div className="w-full h-48 rounded-xl bg-gradient-to-r from-pink-50 to-rose-50 border-dashed border-2 border-gray-200 flex items-center justify-center text-gray-400">
-                  {flipLink ? (
-                    <a href={flipLink} target="_blank" rel="noreferrer" className="text-sm underline text-pink-600">Open flipbook link</a>
-                  ) : (
-                    <div className="text-center">
-                      <p className="font-medium">No flipbook link yet</p>
-                      <p className="text-xs">Upload your flipbook to Heyzine or any host and paste the share URL here.</p>
-                    </div>
-                  )}
+              {SPOTIFY_PLAYLIST_ID ? (
+                <div className="w-full overflow-hidden rounded-xl shadow-lg">
+                  <iframe
+                    data-testid="embed-iframe"
+                    style={{ borderRadius: 12 }}
+                    // Uses the dynamic Spotify URL
+                    src={spotifyEmbedUrl}
+                    width="100%"
+                    height="352"
+                    frameBorder="0"
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    loading="lazy"
+                    title="Spotify birthday playlist"
+                  />
                 </div>
-              </div>
+              ) : (
+                <p className="text-center text-gray-500 p-4 border border-dashed rounded-xl">
+                  (Please add a Spotify Playlist ID in the configuration to activate this section)
+                </p>
+              )}
+            </Card>
+          </section>
 
-              <div className="flex flex-col gap-2">
-                <input value={localFlipInput} onChange={(e) => setLocalFlipInput(e.target.value)} placeholder="Paste Heyzine / flipbook URL" className="px-3 py-2 border rounded" />
-                <div className="flex gap-2">
-                  <button onClick={saveFlipLink} className="px-3 py-2 rounded bg-gradient-to-r from-pink-500 to-rose-500 text-white">Save Link</button>
-                  <button onClick={clearFlipLink} className="px-3 py-2 rounded bg-white shadow">Clear</button>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </section>
 
-        {/* Spotify Playlist */}
-        <section className="mt-10">
-          <Card>
-            <div className="flex items-center gap-3 mb-4">
-              <Music className="w-5 h-5" />
-              <h2 className="text-xl font-semibold">A Playlist Just For You</h2>
-            </div>
-            <p className="text-sm text-gray-600 mb-3">Songs you’ll like. Songs that remind me of you. Play it while flipping the pages.</p>
-
-            <div className="w-full overflow-hidden rounded-xl shadow-lg">
-              <iframe
-                data-testid="embed-iframe"
-                style={{ borderRadius: 12 }}
-                src="https://open.spotify.com/embed/playlist/3tc4TLYRYfvrhiT9J7TBEB?utm_source=generator"
-                width="100%"
-                height="352"
-                frameBorder="0"
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                loading="lazy"
-                title="Spotify playlist"
-              ></iframe>
-            </div>
-          </Card>
-        </section>
-
-        {/* Little extras */}
-        <section className="mt-10">
-          <Card>
-            <div className="flex items-center gap-3">
-              <MapPin className="w-5 h-5" />
-              <div>
-                <h3 className="font-semibold">Little Extras</h3>
-                <p className="text-sm text-gray-600">Attach the Amul dark chocolate & lava cake next to the bouquet. Add the redeem cards into an envelope. Don’t forget the handwritten letter inside the pop-up card.</p>
-              </div>
-            </div>
-          </Card>
-        </section>
-
-        <footer className="text-center text-xs text-gray-500 mt-12 pb-10">Made with drama & patience. If this made you smile, mission complete.</footer>
-      </main>
-    </div>
+          <footer className="text-center text-xs text-gray-500 mt-8 pb-8">Made with drama & patience. If this made you smile, mission complete.</footer>
+        </main>
+      </div>
+    </>
   );
 }
